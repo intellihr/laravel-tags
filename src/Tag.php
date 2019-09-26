@@ -23,20 +23,18 @@ class Tag extends Model implements Sortable
             return $query;
         }
 
-        return $query->where('type', $type)->orderBy('order_column');
+        return $query->where('type', $type)->ordered();
     }
 
     public function scopeContaining(Builder $query, string $name, $locale = null): Builder
     {
         $locale = $locale ?? app()->getLocale();
 
-        $locale = '"'.$locale.'"';
-
-        return $query->whereRaw("LOWER(JSON_EXTRACT(name, '$.".$locale."')) like ?", ['"%'.strtolower($name).'%"']);
+        return $query->whereRaw('lower('.$this->getQuery()->getGrammar()->wrap('name->'.$locale).') like ?', ['%'.mb_strtolower($name).'%']);
     }
 
     /**
-     * @param array|\ArrayAccess $values
+     * @param string|array|\ArrayAccess $values
      * @param string|null $type
      * @param string|null $locale
      *
@@ -45,7 +43,7 @@ class Tag extends Model implements Sortable
     public static function findOrCreate($values, string $type = null, string $locale = null)
     {
         $tags = collect($values)->map(function ($value) use ($type, $locale) {
-            if ($value instanceof Tag) {
+            if ($value instanceof self) {
                 return $value;
             }
 
@@ -57,7 +55,7 @@ class Tag extends Model implements Sortable
 
     public static function getWithType(string $type): DbCollection
     {
-        return static::withType($type)->orderBy('order_column')->get();
+        return static::withType($type)->ordered()->get();
     }
 
     public static function findFromString(string $name, string $type = null, string $locale = null)
@@ -67,6 +65,15 @@ class Tag extends Model implements Sortable
         return static::query()
             ->where("name->{$locale}", $name)
             ->where('type', $type)
+            ->first();
+    }
+
+    public static function findFromStringOfAnyType(string $name, string $locale = null)
+    {
+        $locale = $locale ?? app()->getLocale();
+
+        return static::query()
+            ->where("name->{$locale}", $name)
             ->first();
     }
 

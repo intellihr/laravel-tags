@@ -2,16 +2,15 @@
 
 namespace Spatie\Tags\Test;
 
-use DB;
 use Dotenv\Dotenv;
 use Spatie\Tags\TagsServiceProvider;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Spatie\Translatable\TranslatableServiceProvider;
 
 abstract class TestCase extends Orchestra
 {
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -22,7 +21,6 @@ abstract class TestCase extends Orchestra
     {
         return [
             TagsServiceProvider::class,
-            TranslatableServiceProvider::class,
         ];
     }
 
@@ -33,7 +31,7 @@ abstract class TestCase extends Orchestra
     {
         //If we're not in travis, load our local .env file
         if (empty(getenv('CI'))) {
-            $dotenv = new Dotenv(realpath(__DIR__.'/..'));
+            $dotenv = Dotenv::create(realpath(__DIR__.'/..'));
             $dotenv->load();
         }
 
@@ -56,7 +54,7 @@ abstract class TestCase extends Orchestra
      */
     protected function setUpDatabase($app)
     {
-        $this->dropAllTables();
+        Schema::dropAllTables();
 
         include_once __DIR__.'/../database/migrations/create_tag_tables.php.stub';
 
@@ -66,26 +64,10 @@ abstract class TestCase extends Orchestra
             $table->increments('id');
             $table->string('name')->nullable();
         });
-    }
 
-    protected function dropAllTables()
-    {
-        $rows = collect(DB::select('SHOW TABLES'));
-
-        if ($rows->isEmpty()) {
-            return;
-        }
-
-        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
-
-        $rows
-            ->map(function ($row) {
-                return $row->Tables_in_laravel_tags;
-            })
-            ->each(function (string $tableName) {
-                DB::statement("DROP TABLE {$tableName}");
-            });
-
-        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        $app['db']->connection()->getSchemaBuilder()->create('test_another_models', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('name')->nullable();
+        });
     }
 }
